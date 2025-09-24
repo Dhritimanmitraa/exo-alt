@@ -1,0 +1,607 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Force solid black as highest-priority fallback while the looping video plays behind content */
+  background: #000 !important;
+  color: #111827 !important; /* Make main text dark by default */
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* Theme variables: default (light) and dark overrides when data-theme='dark' */
+:root {
+  --card-bg: #ffffff;
+  --card-text: #111827; /* gray-900 */
+  --muted-text: #6b7280; /* gray-500 */
+}
+
+[data-theme='dark'] {
+  --card-bg: #0b1220; /* deep space card */
+  --card-text: #e6eef8; /* light text */
+  --muted-text: #9ca3af; /* gray-400 */
+  color-scheme: dark;
+}
+
+/* Utility mappings for legacy bg-white usage: components using bg-white will use var when in dark theme via selector */
+.bg-white {
+  background-color: var(--card-bg) !important;
+  color: var(--card-text) !important;
+}
+.text-gray-900 { color: var(--card-text) !important; }
+.text-gray-600 { color: var(--muted-text) !important; }
+.text-white { color: var(--card-text) !important; } /* map existing text-white usages to dark text in light mode */
+.border-gray-200 { border-color: rgba(203,213,225,0.12) !important; }
+.hover\:bg-gray-100:hover { background-color: rgba(255,255,255,0.03) !important; }
+.bg-gradient-to-r.from-space-dark { background-image: linear-gradient(to right, #0f0f23, #1e3a8a); }
+
+/* Additional mappings for common utilities used across components */
+.bg-gray-50 { background-color: rgba(255,255,255,0.03) !important; }
+.text-gray-700 { color: var(--card-text) !important; }
+.text-gray-500 { color: var(--muted-text) !important; }
+.border-gray-100 { border-color: rgba(255,255,255,0.06) !important; }
+.border-white { border-color: rgba(255,255,255,0.08) !important; }
+.bg-gradient-to-r.from-space-dark { background-image: linear-gradient(to right, #071022, #173055); }
+
+/* Background video element fills the viewport behind content */
+.bg-video {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 100vw;
+  height: 100vh;
+  transform: translate(-50%, -50%);
+  object-fit: cover;
+  z-index: -1;
+}
+
+/* Hide video on mobile devices to improve performance and reduce bandwidth usage */
+@media (max-width: 768px) {
+  .bg-video {
+    display: none;
+  }
+  
+  /* Add static background image fallback for mobile */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('/images/kepler-186f.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    z-index: -2;
+  }
+}
+
+/* Reduce overlay opacity on mobile since we're using a static background */
+@media (max-width: 768px) {
+  .site-overlay {
+    background: rgba(0,0,0,0.2);
+  }
+}
+
+/* Semi-opaque overlay to improve text contrast */
+.site-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 0; /* overlay sits above the video */
+  pointer-events: none;
+}
+
+#app {
+  position: relative;
+  z-index: 1; /* ensure app content is above overlay and video */
+  background: transparent !important; /* prevent utility classes from forcing a white background */
+}
+
+/* Play button to allow user-gesture start of background video */
+#bg-play-btn {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 9999;
+  padding: 0.6rem 1rem;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* Hide play button on mobile since video is disabled */
+@media (max-width: 768px) {
+  #bg-play-btn {
+    display: none !important;
+  }
+}
+
+/* Mobile layout improvements */
+@media (max-width: 768px) {
+  /* Improve touch targets */
+  button, .cursor-pointer {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Better spacing for mobile */
+  .grid {
+    gap: 0.75rem;
+  }
+  
+  /* Reduce padding on mobile to maximize content area */
+  .p-6 {
+    padding: 1rem;
+  }
+  
+  .p-4 {
+    padding: 0.75rem;
+  }
+  
+  /* Prevent horizontal scroll */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Improve text readability on mobile */
+  .text-sm {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+}
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Small visual indicator to show audio is active */
+.sound-indicator {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #7c3aed; /* cosmic purple */
+  box-shadow: 0 0 8px rgba(124,58,237,0.8);
+  pointer-events: none;
+}
+
+.sound-indicator::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(124,58,237,0.12), transparent 50%);
+}
+
+/* Pulse animation for active audio indicator */
+@keyframes sound-pulse {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+.sound-indicator {
+  animation: sound-pulse 1.2s ease-in-out infinite;
+}
+
+/* Frosted search input */
+.frosted-search {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(8px) saturate(110%);
+  -webkit-backdrop-filter: blur(8px) saturate(110%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02), 0 6px 18px rgba(2,6,23,0.6);
+}
+.frosted-search::placeholder { color: rgba(255,255,255,0.45); }
+
+/* Frosted panel and chart card styles */
+.frosted-panel {
+  background: rgba(15,23,42,0.85);
+  border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  box-shadow: 
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 8px 24px rgba(2,6,23,0.5),
+    0 2px 8px rgba(0,0,0,0.3);
+}
+
+.frosted-chart-card {
+  background: rgba(15,23,42,0.8);
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px) saturate(110%);
+  -webkit-backdrop-filter: blur(10px) saturate(110%);
+  box-shadow: 
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 6px 20px rgba(2,6,23,0.4),
+    0 1px 6px rgba(0,0,0,0.2);
+}
+
+.frosted-stat-card {
+  background: rgba(15,23,42,0.75);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(8px) saturate(105%);
+  -webkit-backdrop-filter: blur(8px) saturate(105%);
+  box-shadow: 
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 4px 16px rgba(2,6,23,0.35),
+    0 1px 4px rgba(0,0,0,0.15);
+}
+
+/* Planet card hover expand styles */
+.planet-card {
+  transform-origin: center top;
+  overflow: visible; /* allow overlay details to escape the card bounds */
+  transition: transform 280ms cubic-bezier(.2,.9,.2,1), box-shadow 280ms ease;
+  position: relative; /* ensure transforms and z-index don't remove element from flow unexpectedly */
+  display: block;
+  will-change: transform; /* hint to browser to optimize hover transforms */
+}
+.planet-card { pointer-events: auto; }
+.planet-card:hover, .planet-card:focus-within {
+  transform: scale(1.08);
+  box-shadow: 0 22px 60px rgba(2,6,23,0.72);
+  border-color: rgba(124,58,237,0.95); /* cosmic purple */
+  z-index: 80;
+  position: relative;
+}
+.planet-card:focus { outline: none; }
+.planet-card .planet-image {
+  transition: transform 300ms ease;
+}
+.planet-card:hover .planet-image, .planet-card:focus-within .planet-image {
+  transform: scale(1.2);
+}
+
+/* Persisted expanded state (pin preview) */
+.planet-card.expanded {
+  position: fixed !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) scale(1.02) !important;
+  width: min(980px, 92vw) !important;
+  max-height: 86vh !important;
+  z-index: 1000 !important;
+  box-shadow: 0 30px 80px rgba(2,6,23,0.8) !important;
+  border-radius: 12px !important;
+}
+.planet-card.expanded .planet-image {
+  transform: scale(1.35) !important;
+  height: 280px !important;
+}
+.planet-card .planet-media { position: relative; }
+.planet-card button[aria-pressed] { position: absolute; }
+.planet-card.expanded .expanded-details {
+  position: relative !important;
+  max-height: none !important;
+  opacity: 1 !important;
+  padding: 20px !important;
+}
+.planet-card .expanded-details {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  transition: all 320ms cubic-bezier(.2,.9,.2,1);
+  /* Use absolute positioning only when the card is within a normal flow and can contain the overlay.
+     Keep it relative to the card by default so it doesn't unexpectedly reposition other elements. */
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 8px;
+  right: 8px;
+  bottom: auto;
+  background: var(--card-bg, #fff);
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.06);
+  transform-origin: top center;
+  box-shadow: 0 18px 60px rgba(2,6,23,0.18);
+  z-index: 70;
+}
+.planet-card:hover .expanded-details, .planet-card:focus-within .expanded-details {
+  max-height: 520px; /* show more content */
+  opacity: 1;
+  padding-top: 12px;
+  transform: translateY(0);
+}
+
+/* Strong global hover rules to ensure hover works even if other rules exist */
+.planet-grid .planet-card:hover,
+.planet-grid .planet-card:focus-within {
+  transform: scale(1.08) !important;
+    box-shadow: 0 24px 70px rgba(2,6,23,0.76) !important;
+  z-index: 200 !important;
+}
+
+  /* Blue gradient shadow layer for cards + optional blue glow */
+  .planet-card { overflow: visible; }
+  .planet-card::before {
+    content: '';
+    position: absolute;
+    left: 6px; right: 6px; top: 6px; bottom: 6px;
+    z-index: 0;
+    border-radius: 12px;
+    pointer-events: none;
+    /* subtle soft gradient shadow underneath the card */
+    box-shadow: 0 24px 60px rgba(2,6,23,0.42), 0 0 48px rgba(37,99,235,0.06);
+    transition: box-shadow 260ms ease, opacity 260ms ease;
+    opacity: 0.95;
+  }
+  .planet-card > * { position: relative; z-index: 10; }
+
+  /* stronger blue glow modifier */
+  .planet-card.glow-blue-strong::before {
+    box-shadow: 0 28px 90px rgba(2,6,23,0.5), 0 0 72px rgba(37,99,235,0.26), inset 0 -6px 18px rgba(0,0,0,0.12);
+    opacity: 1;
+  }
+
+  .planet-card.glow-blue-strong:hover::before {
+    box-shadow: 0 40px 120px rgba(2,6,23,0.6), 0 0 120px rgba(37,99,235,0.36), inset 0 -8px 22px rgba(0,0,0,0.14);
+  }
+
+/* When modal is open, only hide any pinned/expanded fixed previews to avoid overlapping the modal.
+   Do NOT disable hover interactions for all cards — users should still be able to hover other cards. */
+body.modal-open .planet-card.expanded {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* Hide expanded-details for any pinned card just in case, but preserve hover on non-pinned cards */
+body.modal-open .planet-card.expanded .expanded-details {
+  display: none !important;
+  max-height: 0 !important;
+  opacity: 0 !important;
+}
+
+/* Desktop: make hovered card span visually larger and push siblings down */
+@media (min-width: 1024px) {
+  .planet-grid { display: grid; }
+
+  /* Ensure grid allows pointer interactions and create a stronger hover rule so hover styles reliably apply */
+  .planet-grid { position: relative; pointer-events: auto; }
+
+  /* Stronger hover/focus rule with higher specificity to override accidental overrides */
+  .planet-grid .planet-card:hover,
+  .planet-grid .planet-card:focus-within {
+    transform: scale(1.1) !important;
+    box-shadow: 0 28px 80px rgba(2,6,23,0.8) !important;
+    z-index: 220 !important;
+    position: relative !important;
+  }
+
+  .planet-grid .planet-card:hover .planet-image,
+  .planet-grid .planet-card:focus-within .planet-image {
+    transform: scale(1.24) !important;
+  }
+
+  .planet-grid .planet-card:hover .expanded-details,
+  .planet-grid .planet-card:focus-within .expanded-details {
+    max-height: 520px !important;
+    opacity: 1 !important;
+    padding-top: 12px !important;
+    transform: translateY(0) !important;
+  }
+
+  /* Preferred: when container supports :has (modern browsers) make the hovered card span columns */
+  .planet-grid:has(.planet-card:hover) .planet-card { transition: transform 280ms ease, flex 280ms ease; }
+  .planet-grid:has(.planet-card:hover) .planet-card:hover { transform: scale(1.12); z-index:90; }
+
+  /* Avoid changing grid-placement (grid-column) on hover — it causes layout reflow/jitter.
+     Instead, emphasize the hovered card visually via transform and z-index while shrinking others. */
+
+  /* Stable fallback for browsers without :has(): when the grid is hovered, shrink non-hovered cards */
+  .planet-grid:hover .planet-card:not(:hover) { transform: scale(0.94); opacity: 0.95; }
+
+  /* Ensure smoother transforms and prevent layout shifts */
+  .planet-grid .planet-card { transition: transform 280ms ease, opacity 220ms ease; box-sizing: border-box; will-change: transform; }
+
+  /* Filter pill button animations to match card feel */
+  .pill-btn {
+    transition: transform 260ms cubic-bezier(.2,.9,.2,1), box-shadow 260ms ease, background-color 200ms ease;
+    will-change: transform, box-shadow;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.04);
+    padding-left: 1.05rem; /* small horizontal padding tweak to match rounded pill */
+    padding-right: 1.05rem;
+  }
+  .pill-inactive {
+    background: var(--card-bg);
+    color: var(--card-text);
+    box-shadow: 0 6px 18px rgba(2,6,23,0.12), 0 0 18px rgba(124,58,237,0.02);
+  }
+  .pill-inactive:hover, .pill-inactive:focus {
+    transform: scale(1.03);
+    box-shadow: 0 18px 40px rgba(2,6,23,0.18), 0 0 36px rgba(124,58,237,0.08);
+  }
+  .pill-active {
+    background: linear-gradient(90deg, #7c3aed, #8b5cf6);
+    color: white;
+    /* Stronger purple glow and soft elevated shadow to match attached design */
+    box-shadow: 0 22px 60px rgba(2,6,23,0.48), 0 0 48px rgba(124,58,237,0.28), inset 0 -2px 8px rgba(0,0,0,0.12);
+    transform: scale(1.06);
+    border: 1px solid rgba(255,255,255,0.06);
+    position: relative;
+  }
+  .pill-active::after {
+    /* subtle outer glow ring */
+    content: '';
+    position: absolute;
+    left: -6px; right: -6px; top: -6px; bottom: -6px;
+    border-radius: 9999px;
+    pointer-events: none;
+    box-shadow: 0 10px 40px rgba(124,58,237,0.14);
+    opacity: 0.95;
+  }
+  .pill-btn:focus { outline: none; }
+
+  /* Visible focus ring for keyboard users */
+  .pill-btn:focus-visible { box-shadow: 0 10px 36px rgba(2,6,23,0.36), 0 0 36px rgba(124,58,237,0.18); }
+
+  /* CTA buttons to match attached visuals */
+  .cta-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    background: #0b1220; /* dark panel */
+    color: #e6eef8;
+    border-radius: 10px;
+    font-weight: 600;
+    /* base shadow + subtle colored glow layer */
+    --cta-glow: 220 38 38; /* default red glow rgb */
+    box-shadow: 0 18px 50px rgba(2,6,23,0.6), 0 0 36px rgba(var(--cta-glow), 0.18);
+    transform: translateY(0);
+    transition: transform 260ms cubic-bezier(.2,.9,.2,1), box-shadow 260ms ease;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .cta-primary:hover, .cta-primary:focus {
+    transform: scale(1.03);
+    box-shadow: 0 30px 80px rgba(2,6,23,0.8), 0 0 46px rgba(var(--cta-glow), 0.26);
+  }
+
+  .cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 1rem;
+    background: linear-gradient(90deg,#7c3aed,#8b5cf6);
+    color: white;
+    border-radius: 10px;
+    font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: transform 260ms cubic-bezier(.2,.9,.2,1), box-shadow 260ms ease;
+  }
+  .cta-secondary:hover, .cta-secondary:focus {
+    transform: scale(1.02);
+    box-shadow: 0 18px 50px rgba(124,58,237,0.25);
+  }
+
+  /* Specific styling for the small 'View in 3D' button shown on certain planet cards */
+  .view3d-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.9rem;
+    background: linear-gradient(90deg,#2563eb,#1e40af);
+    color: white;
+    border-radius: 8px;
+    font-weight: 600;
+    /* blue glow for 3D view */
+    --view3d-glow: 37 99 235; /* rgb(37,99,235) */
+    box-shadow: 0 10px 30px rgba(2,6,23,0.28), 0 0 28px rgba(var(--view3d-glow), 0.20);
+    transition: transform 220ms cubic-bezier(.2,.9,.2,1), box-shadow 220ms ease, opacity 180ms ease;
+  }
+  .view3d-btn:hover, .view3d-btn:focus {
+    transform: scale(1.06);
+    box-shadow: 0 22px 60px rgba(2,6,23,0.5), 0 0 44px rgba(var(--view3d-glow), 0.32);
+    opacity: 1;
+  }
+
+  /* Frosted panel used for floating cards like Random Discovery */
+  .frosted-panel {
+    background: rgba(255,255,255,0.04); /* subtle translucent white */
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 18px 60px rgba(2,6,23,0.6), 0 0 48px rgba(124,58,237,0.08);
+  }
+
+  /* Inner content glow to improve legibility against motion video */
+  .panel-content {
+    text-shadow: 0 6px 18px rgba(2,6,23,0.6);
+    filter: drop-shadow(0 10px 30px rgba(2,6,23,0.5));
+  }
+
+  /* Refined pill styles to match attached design */
+  .pill-icon { background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); }
+  .pill-label { color: var(--card-text); }
+  .pill-check { background: rgba(255,255,255,0.12); color: white; }
+
+  /* Inactive pill: dark translucent panel with subtle inner shadow */
+  .pill-inactive {
+    background: linear-gradient(180deg, rgba(11,18,32,0.72), rgba(11,18,32,0.64));
+    color: #dbeafe; /* light text */
+    border: 1px solid rgba(255,255,255,0.04);
+    box-shadow: 0 8px 24px rgba(2,6,23,0.48), inset 0 -2px 6px rgba(0,0,0,0.4);
+  }
+  .pill-inactive .pill-icon { background: rgba(255,255,255,0.04); }
+
+  /* Active pill: strong purple gradient with a soft inner highlight */
+  .pill-active {
+    background: linear-gradient(90deg,#8b5cf6,#7c3aed);
+    color: white;
+    box-shadow: 0 26px 60px rgba(2,6,23,0.56), 0 0 60px rgba(124,58,237,0.26), inset 0 -3px 10px rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .pill-active .pill-icon { background: rgba(255,255,255,0.12); color: white; }
+  .pill-active .pill-check { background: rgba(255,255,255,0.18); color: #0b1220; font-weight: 700; }
+
+  /* Slight spacing and typography tweaks */
+  .pill-btn .pill-label { font-weight: 600; font-size: 0.95rem; }
+  .pill-btn { padding-left: 0.9rem; padding-right: 0.9rem; }
+
+  /* Preview button removed from markup */
+
+  /* Generic glow utilities (apply to any element) */
+  .glow-red { --glow-rgb: 239 68 68; box-shadow: 0 12px 40px rgba(239,68,68,0.28), 0 0 36px rgba(239,68,68,0.18); }
+  .glow-purple { --glow-rgb: 124 58 237; box-shadow: 0 18px 60px rgba(124,58,237,0.28), 0 0 42px rgba(124,58,237,0.22); }
+  .glow-blue { --glow-rgb: 37 99 235; box-shadow: 0 12px 40px rgba(37,99,235,0.24), 0 0 36px rgba(37,99,235,0.18); }
+
+  /* Apply subtle gradient shadows to all buttons and button-like elements */
+  button,
+  .cta-primary,
+  .cta-secondary,
+  .view3d-btn,
+  .pill-btn,
+  .preview-btn {
+    /* layered radial-ish glow using multiple shadows */
+    box-shadow: 0 8px 28px rgba(2,6,23,0.48),
+                0 0 40px rgba(124,58,237,0.06),
+                inset 0 -2px 6px rgba(0,0,0,0.12);
+    transition: box-shadow 220ms ease, transform 220ms ease;
+  }
+
+  button:hover,
+  .cta-primary:hover,
+  .cta-secondary:hover,
+  .view3d-btn:hover,
+  .pill-btn:hover,
+  .preview-btn:hover {
+    box-shadow: 0 20px 60px rgba(2,6,23,0.56),
+                0 0 68px rgba(124,58,237,0.12),
+                inset 0 -2px 6px rgba(0,0,0,0.16);
+    transform: translateY(-2px);
+  }
+
+  /* Footer animations: subtle fade-up with stagger capability */
+  @keyframes fadeUpShort {
+    from { opacity: 0; transform: translateY(8px); filter: blur(2px); }
+    to { opacity: 1; transform: translateY(0); filter: blur(0); }
+  }
+  .footer-animate {
+    opacity: 0;
+    transform: translateY(8px);
+    animation-name: fadeUpShort;
+    animation-duration: 700ms;
+    animation-fill-mode: forwards;
+    animation-timing-function: cubic-bezier(.2,.9,.2,1);
+    will-change: opacity, transform;
+  }
+  /* Keep footer lines hidden until observer adds the animate class */
+  .footer-line {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  /* When a central modal is open, only hide pinned expanded card previews to avoid stacking issues */
+  body.modal-open .planet-card.expanded { display: none !important; pointer-events: none !important; }
+}

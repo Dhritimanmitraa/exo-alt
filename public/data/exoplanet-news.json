@@ -1,0 +1,36 @@
+{
+  "articles": [
+    {
+      "id": "custom-1",
+      "title": "Example: Custom Exoplanet Discovery",
+      "summary": "This is an example of how to structure custom news articles for the ExoArchive Pocket application.",
+      "fullContent": "This is a demonstration of how users can provide their own news content for the ExoArchive Pocket application. You can replace this file with your own news articles.\n\nTo use custom news:\n1. Edit this file (public/data/exoplanet-news.json)\n2. Follow the JSON structure shown in this example\n3. Enable the 'Local News File' source in the news configuration\n4. Set useRealData to true in the news service\n\nYour articles will automatically appear in the news feed alongside or instead of the mock data.",
+      "publishedAt": "2024-01-15T10:00:00Z",
+      "source": {
+        "name": "Custom News Source"
+      },
+      "imageUrl": "/images/kepler-186f.jpg",
+      "significance": "interesting",
+      "tags": ["custom", "example", "demo"],
+      "relatedPlanet": "Kepler-186 f"
+    },
+    {
+      "id": "custom-2", 
+      "title": "How to Add Your Own News Articles",
+      "summary": "Instructions for customizing the news feed with your own content.",
+      "fullContent": "The ExoArchive Pocket application supports custom news feeds through JSON files or external APIs. Here's how to add your own content:\n\n**Option 1: Local JSON File**\n- Edit the file at public/data/exoplanet-news.json\n- Follow the structure shown in these examples\n- Enable the 'Local News File' source\n\n**Option 2: External API**\n- Set up your own API endpoint that returns news in the expected format\n- Add your API URL to the news configuration\n- Enable the custom source\n\n**Option 3: Custom JSON URL**\n- Host your JSON file anywhere on the web\n- Update the 'User Custom Feed' URL in the configuration\n- Enable that source\n\nThe application will automatically fetch and display your news alongside the built-in content.",
+      "publishedAt": "2024-01-14T15:30:00Z",
+      "source": {
+        "name": "ExoArchive Documentation"
+      },
+      "significance": "routine",
+      "tags": ["documentation", "custom", "configuration"]
+    }
+  ],
+  "_metadata": {
+    "description": "Custom news feed for ExoArchive Pocket",
+    "lastUpdated": "2024-01-15T10:00:00Z",
+    "format": "exoarchive-news-v1",
+    "instructions": "Replace these example articles with your own content. Ensure each article has all required fields: id, title, summary, fullContent, publishedAt, and source."
+  }
+}

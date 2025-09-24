@@ -1,0 +1,8 @@
+dist
+node_modules
+.env
+*.log
+coverage
+public/images
+public/audio
+public/data
