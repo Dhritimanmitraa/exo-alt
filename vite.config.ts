@@ -30,7 +30,7 @@ export default defineConfig({
           if (id.includes('/src/lib/mlClassifier')) return 'ml-classifier';
           if (id.includes('/realtime/')) return 'realtime';
           if (id.includes('/multiplayer/')) return 'multiplayer-ui';
-          if (id.includes('ws') || id.includes('websocket')) return 'websocket';
+          // Avoid forcing a separate chunk for ws/websocket since we don't bundle node 'ws'.
         }
       }
     }

@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import type {
   RealtimeClientMessage,
   RealtimeServerMessage,
@@ -11,9 +10,8 @@ import type {
 
 type MessageHandler<T extends RealtimeServerMessage> = (message: T) => void;
 
-type HandlersMap = {
-  [K in RealtimeServerMessage['type']]?: Set<MessageHandler<Extract<RealtimeServerMessage, { type: K }>>>;
-};
+// Simplified handler map typing to avoid complex conditional types in sets
+type HandlersMap = Partial<Record<RealtimeServerMessage['type'], Set<(message: any) => void>>>;
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const RECONNECT_BASE_DELAY_MS = 1000;
@@ -73,7 +71,16 @@ export class RealtimeClient {
     this.roomId = roomId;
 
     // Restore or create user identity
-    const existingId = userId || this.storage.getItem('exo-user-id') || uuidv4();
+    const generateId = () => {
+      try {
+        // Prefer secure random UUID when available
+        const anyCrypto: any = (typeof crypto !== 'undefined') ? crypto : (typeof window !== 'undefined' ? (window as any).crypto : undefined);
+        if (anyCrypto?.randomUUID) return anyCrypto.randomUUID();
+      } catch {}
+      // Fallback
+      return `u_${Math.random().toString(36).slice(2)}_${Date.now()}`;
+    };
+    const existingId = userId || this.storage.getItem('exo-user-id') || generateId();
     try { this.storage.setItem('exo-user-id', existingId); } catch {}
 
     const name = this.storage.getItem('exo-user-name') || this.generateDisplayName();

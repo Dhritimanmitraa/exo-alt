@@ -150,16 +150,29 @@ export default function Planet3DViewer({ planet, onClose, onCameraUpdate }: Plan
 
   const stopPropagation = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
 
+  const lastSentRef = useRef<number>(0);
   const handleCameraChange = useCallback((controls: any) => {
+    const now = Date.now();
+    if (now - (lastSentRef.current || 0) < 100) return; // ~10Hz
+    lastSentRef.current = now;
     const c: CameraState = {
       position: [controls.object.position.x, controls.object.position.y, controls.object.position.z],
       target: [controls.target.x, controls.target.y, controls.target.z],
       zoom: controls.object.zoom ?? 1,
-      timestamp: Date.now(),
+      timestamp: now,
     };
     if (onCameraUpdate) onCameraUpdate(c);
     if (realtime) realtime.updateCamera(planet.pl_name, c);
   }, [onCameraUpdate, realtime, planet.pl_name]);
+
+  // Join/leave viewer room for camera ghosts
+  useEffect(() => {
+    if (!realtime) return;
+    realtime.joinPlanetViewer(planet.pl_name);
+    return () => {
+      realtime.leavePlanetViewer(planet.pl_name);
+    };
+  }, [realtime, planet.pl_name]);
 
   return (
     <div
@@ -202,7 +215,10 @@ export default function Planet3DViewer({ planet, onClose, onCameraUpdate }: Plan
             dampingFactor={0.08}
             minDistance={1.5}
             maxDistance={20}
-            onChange={(e) => handleCameraChange(e.target)}
+            onChange={(e: any) => {
+              if (!e || !e.target) return;
+              handleCameraChange(e.target);
+            }}
           />
 
           {/* Camera ghosts for peers viewing same planet */}

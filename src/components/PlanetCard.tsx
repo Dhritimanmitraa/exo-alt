@@ -48,7 +48,7 @@ const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onClick, filterType, on
     <div
       onClick={onClick}
       tabIndex={0}
-      className={`planet-card glow-blue-strong bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out cursor-pointer p-4 border border-gray-200 focus:outline-none hover:scale-105 hover:-translate-y-2 hover:border-gray-300`}
+      className={`relative planet-card glow-blue-strong bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out cursor-pointer p-4 border border-gray-200 focus:outline-none hover:scale-105 hover:-translate-y-2 hover:border-gray-300`}
     >
       {selectedBy.length > 0 && (
         <PlanetSelectionBadge selectedBy={selectedBy as any} />

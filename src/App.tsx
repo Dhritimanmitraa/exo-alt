@@ -45,7 +45,6 @@ import { NarrativeContext } from './lib/narrator';
 import dataService from './lib/dataService';
 import { RealtimeProvider, useRealtime } from './lib/realtime/RealtimeContext';
 import PresenceBar from './components/multiplayer/PresenceBar';
-import type { ConflictInfo } from './lib/realtime/types';
 import ConflictToast from './components/multiplayer/ConflictToast';
 
 // Lazy load the expensive 3D viewer component
@@ -70,7 +69,6 @@ function AppInner() {
   const [isDataVisualizationOpen, setIsDataVisualizationOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [viewerPlanet, setViewerPlanet] = useState<Planet | null>(null);
-  const [conflict, setConflict] = useState<ConflictInfo | null>(null);
   const [userStats, setUserStats] = useState({
     planetsViewed: 0,
     comparisonsCreated: 0,
@@ -226,13 +224,9 @@ function AppInner() {
 
   const rt = (() => { try { return useRealtime(); } catch { return null; } })();
   const handlePlanetClick = async (planet: Planet) => {
-    // Realtime selection attempt
+    // Realtime selection attempt (conflicts handled via context-level lastConflict)
     if (rt && rt.selectPlanet) {
-      const ok = await rt.selectPlanet(planet.pl_name);
-      if (!ok) {
-        setConflict({ planetId: planet.pl_name as any, lockedBy: 'Another user' });
-        return;
-      }
+      await rt.selectPlanet(planet.pl_name);
     }
     setSelectedPlanet(planet);
     setIsDetailOpen(true);
@@ -526,7 +520,13 @@ function AppInner() {
       <PlanetDetail
         planet={selectedPlanet}
         isOpen={isDetailOpen}
-        onClose={() => setIsDetailOpen(false)}
+        onClose={() => {
+          if (rt && selectedPlanet) {
+            rt.unselectPlanet(selectedPlanet.pl_name);
+          }
+          setIsDetailOpen(false);
+          setSelectedPlanet(null);
+        }}
         context={getContextFromFilter(activeFilter)}
       />
 
@@ -699,9 +699,9 @@ function AppInner() {
         )}
       </Suspense>
 
-      {/* Conflict toast */}
-      {conflict && (
-        <ConflictToast conflict={conflict} onDismiss={() => setConflict(null)} />
+      {/* Conflict toast from realtime context */}
+      {rt?.lastConflict && (
+        <ConflictToast conflict={rt.lastConflict} onDismiss={() => rt?.clearConflict?.()} />
       )}
     </div>
   );
@@ -711,7 +711,7 @@ function AppInner() {
 
 export default function App() {
   return (
-    <RealtimeProvider roomId="main-exploration">
+    <RealtimeProvider roomId="main-exploration" url={(import.meta as any).env?.VITE_REALTIME_URL}>
       <AppInner />
     </RealtimeProvider>
   );
