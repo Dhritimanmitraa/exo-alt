@@ -43,11 +43,15 @@ import { Planet, filterEarthLike, filterWeird, filterClosest, getRandomPlanet } 
 import VirtualPlanetGrid from './components/VirtualPlanetGrid';
 import { NarrativeContext } from './lib/narrator';
 import dataService from './lib/dataService';
+import { RealtimeProvider, useRealtime } from './lib/realtime/RealtimeContext';
+import PresenceBar from './components/multiplayer/PresenceBar';
+import type { ConflictInfo } from './lib/realtime/types';
+import ConflictToast from './components/multiplayer/ConflictToast';
 
 // Lazy load the expensive 3D viewer component
 const Planet3DViewer = lazy(() => import('./components/Planet3DViewer'));
 
-function App() {
+function AppInner() {
   const [planets, setPlanets] = useState<Planet[]>([]);
   const [filteredPlanets, setFilteredPlanets] = useState<Planet[]>([]);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
@@ -66,6 +70,7 @@ function App() {
   const [isDataVisualizationOpen, setIsDataVisualizationOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [viewerPlanet, setViewerPlanet] = useState<Planet | null>(null);
+  const [conflict, setConflict] = useState<ConflictInfo | null>(null);
   const [userStats, setUserStats] = useState({
     planetsViewed: 0,
     comparisonsCreated: 0,
@@ -219,14 +224,19 @@ function App() {
     }
   }, [activeFilter, planets, searchQuery]);
 
-  const handlePlanetClick = (planet: Planet) => {
+  const rt = (() => { try { return useRealtime(); } catch { return null; } })();
+  const handlePlanetClick = async (planet: Planet) => {
+    // Realtime selection attempt
+    if (rt && rt.selectPlanet) {
+      const ok = await rt.selectPlanet(planet.pl_name);
+      if (!ok) {
+        setConflict({ planetId: planet.pl_name as any, lockedBy: 'Another user' });
+        return;
+      }
+    }
     setSelectedPlanet(planet);
     setIsDetailOpen(true);
-    // Update user stats
-    setUserStats(prev => ({
-      ...prev,
-      planetsViewed: prev.planetsViewed + 1
-    }));
+    setUserStats(prev => ({ ...prev, planetsViewed: prev.planetsViewed + 1 }));
   };
 
   const getContextFromFilter = (filter: FilterType): NarrativeContext => {
@@ -301,7 +311,7 @@ function App() {
                 <TypewriterFadeText text="Discover exoplanets and space heritage" className="text-blue-200 text-sm sm:text-base" />
               </div>
             </div>
-            <nav className="flex gap-2 sm:gap-4">
+            <nav className="flex gap-2 sm:gap-4 items-center">
               <button
                 onClick={() => setCurrentView('home')}
                 className={'px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base ' +
@@ -353,6 +363,12 @@ function App() {
               >
                 📊 Data
               </button>
+              {/* Presence Bar */}
+              {rt && (
+                <div className="ml-2">
+                  <PresenceBar />
+                </div>
+              )}
               {/* Theme is fixed to dark; theme toggle removed */}
               {/* Audio controls: play/pause, speaker (mute), volume */}
               <div className="flex items-center gap-2 ml-2">
@@ -486,6 +502,7 @@ function App() {
               onView3D={openViewer}
               filterType={activeFilter}
               className="planet-grid"
+              selectedPlanets={rt?.selectedPlanets as any}
             />
           ) : (
             <div className="text-center py-12">
@@ -681,10 +698,21 @@ function App() {
           <Planet3DViewer planet={viewerPlanet} onClose={closeViewer} />
         )}
       </Suspense>
+
+      {/* Conflict toast */}
+      {conflict && (
+        <ConflictToast conflict={conflict} onDismiss={() => setConflict(null)} />
+      )}
     </div>
   );
 }
 
 // ThemeToggle removed; app is dark-only by default.
 
-export default App;
+export default function App() {
+  return (
+    <RealtimeProvider roomId="main-exploration">
+      <AppInner />
+    </RealtimeProvider>
+  );
+}

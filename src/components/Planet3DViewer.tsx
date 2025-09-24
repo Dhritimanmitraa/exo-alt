@@ -4,10 +4,15 @@ import { OrbitControls, useGLTF, Html, useProgress } from '@react-three/drei';
 import { BackSide } from 'three';
 import type { Planet } from '../lib/filters';
 import { loadModelManifest, getModelUrl, slugFromPlanetName } from '../lib/modelManifest';
+import type { CameraState, UserPresence } from '../lib/realtime/types';
+import { useRealtime } from '../lib/realtime/RealtimeContext';
+import CameraGhost from './multiplayer/CameraGhost';
 
 type Planet3DViewerProps = {
   planet: Planet;
   onClose: () => void;
+  peers?: UserPresence[];
+  onCameraUpdate?: (camera: CameraState) => void;
 };
 
 // Slug generation now centralized in modelManifest.ts
@@ -100,12 +105,13 @@ function ProceduralPlanet({ planet }: { planet: Planet }) {
   );
 }
 
-export default function Planet3DViewer({ planet, onClose }: Planet3DViewerProps) {
+export default function Planet3DViewer({ planet, onClose, onCameraUpdate }: Planet3DViewerProps) {
   useEscapeToClose(onClose);
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [manifestReady, setManifestReady] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const previouslyFocusedRef = useRef<Element | null>(null);
+  const realtime = (() => { try { return useRealtime(); } catch { return null; } })();
 
   const slug = useMemo(() => slugFromPlanetName(planet.pl_name || ''), [planet.pl_name]);
 
@@ -144,6 +150,17 @@ export default function Planet3DViewer({ planet, onClose }: Planet3DViewerProps)
 
   const stopPropagation = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
 
+  const handleCameraChange = useCallback((controls: any) => {
+    const c: CameraState = {
+      position: [controls.object.position.x, controls.object.position.y, controls.object.position.z],
+      target: [controls.target.x, controls.target.y, controls.target.z],
+      zoom: controls.object.zoom ?? 1,
+      timestamp: Date.now(),
+    };
+    if (onCameraUpdate) onCameraUpdate(c);
+    if (realtime) realtime.updateCamera(planet.pl_name, c);
+  }, [onCameraUpdate, realtime, planet.pl_name]);
+
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center"
@@ -179,7 +196,25 @@ export default function Planet3DViewer({ planet, onClose }: Planet3DViewerProps)
           ) : (
             <ProceduralPlanet planet={planet} />
           )}
-          <OrbitControls enablePan={false} enableDamping dampingFactor={0.08} minDistance={1.5} maxDistance={20} />
+          <OrbitControls
+            enablePan={false}
+            enableDamping
+            dampingFactor={0.08}
+            minDistance={1.5}
+            maxDistance={20}
+            onChange={(e) => handleCameraChange(e.target)}
+          />
+
+          {/* Camera ghosts for peers viewing same planet */}
+          {realtime && realtime.camerasInPlanet.get(planet.pl_name as any) && (
+            <group>
+              {Array.from(realtime.camerasInPlanet.get(planet.pl_name as any)!.entries()).map(([uid, cam]) => {
+                const user = realtime.peers.find(p => String(p.id) === String(uid));
+                if (!user) return null;
+                return <CameraGhost key={String(uid)} user={user} camera={cam} />;
+              })}
+            </group>
+          )}
         </Canvas>
       </div>
     </div>

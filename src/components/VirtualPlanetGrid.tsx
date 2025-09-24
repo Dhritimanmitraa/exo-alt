@@ -10,6 +10,7 @@ interface VirtualPlanetGridProps {
   onView3D: (planet: Planet) => void;
   filterType: FilterType;
   className?: string;
+  selectedPlanets?: Map<string, string[]>;
 }
 
 const useContainerSize = (ref: React.RefObject<HTMLDivElement>) => {
@@ -38,6 +39,7 @@ type CellData = {
   onPlanetClick: (planet: Planet) => void;
   onView3D: (planet: Planet) => void;
   filterType: FilterType;
+  selectedPlanets?: Map<string, string[]>;
 };
 
 const PlanetGridCell = React.memo((props: GridChildComponentProps<CellData>) => {
@@ -52,12 +54,13 @@ const PlanetGridCell = React.memo((props: GridChildComponentProps<CellData>) => 
         onClick={() => data.onPlanetClick(planet)}
         filterType={data.filterType}
         onView3D={data.onView3D}
+        selectedBy={(data.selectedPlanets?.get(planet.pl_name || '') || []) as any}
       />
     </div>
   );
 }, areEqual);
 
-const VirtualPlanetGrid: React.FC<VirtualPlanetGridProps> = ({ planets, onPlanetClick, onView3D, filterType, className }) => {
+const VirtualPlanetGrid: React.FC<VirtualPlanetGridProps> = ({ planets, onPlanetClick, onView3D, filterType, className, selectedPlanets }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { width, height } = useContainerSize(containerRef);
 
@@ -84,7 +87,7 @@ const VirtualPlanetGrid: React.FC<VirtualPlanetGridProps> = ({ planets, onPlanet
     return Math.ceil(planets.length / columnCount);
   }, [planets.length, columnCount]);
 
-  const cellData = useMemo<CellData>(() => ({ planets, columnCount, onPlanetClick, onView3D, filterType }), [planets, columnCount, onPlanetClick, onView3D, filterType]);
+  const cellData = useMemo<CellData>(() => ({ planets, columnCount, onPlanetClick, onView3D, filterType, selectedPlanets }), [planets, columnCount, onPlanetClick, onView3D, filterType, selectedPlanets]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // Preserve basic keyboard navigation focus ring inside cards

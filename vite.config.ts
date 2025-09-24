@@ -28,6 +28,9 @@ export default defineConfig({
           if (id.includes('react-window')) return 'virtualization';
           if (id.includes('@tensorflow/tfjs')) return 'tensorflow';
           if (id.includes('/src/lib/mlClassifier')) return 'ml-classifier';
+          if (id.includes('/realtime/')) return 'realtime';
+          if (id.includes('/multiplayer/')) return 'multiplayer-ui';
+          if (id.includes('ws') || id.includes('websocket')) return 'websocket';
         }
       }
     }

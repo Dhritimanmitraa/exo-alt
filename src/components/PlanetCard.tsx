@@ -1,14 +1,16 @@
 ﻿import React from 'react';
 import { Planet, earthLikeScore, weirdnessScore } from '../lib/filters';
+import PlanetSelectionBadge from './multiplayer/PlanetSelectionBadge';
 
 interface PlanetCardProps {
   planet: Planet;
   onClick: () => void;
   filterType?: string;
   onView3D?: (planet: Planet) => void;
+  selectedBy?: string[];
 }
 
-const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onClick, filterType, onView3D = () => {} }) => {
+const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onClick, filterType, onView3D = () => {}, selectedBy = [] }) => {
   const formatValue = (value: number | null | undefined, unit: string = '', precision: number = 1): string => {
     if (value == null) return 'Unknown';
     return value.toFixed(precision) + unit;
@@ -48,6 +50,9 @@ const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onClick, filterType, on
       tabIndex={0}
       className={`planet-card glow-blue-strong bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out cursor-pointer p-4 border border-gray-200 focus:outline-none hover:scale-105 hover:-translate-y-2 hover:border-gray-300`}
     >
+      {selectedBy.length > 0 && (
+        <PlanetSelectionBadge selectedBy={selectedBy as any} />
+      )}
       {/* Preview button removed per request */}
       <div className="planet-media mb-3 overflow-hidden rounded-md">
         <img
